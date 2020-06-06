@@ -299,8 +299,25 @@ def _parse_and_format_args():
                 logger.info("Using %s value from config file", a.dest)
                 setattr(args, a.dest, config_dict.get(a.dest))
 
+    blacklist = config_dict.get('blacklist'):
     blocklist = config_dict.get('blocklist')
+    whitelist = config_dict.get('whitelist')
     allowlist = config_dict.get('allowlist')
+    if blacklist and blocklist:
+        # Would be odd to be here, but might as well be nice to the users
+        logger.warning("Please remove blacklist from your config. This will stop working in the next minor release")
+    if whitelist and allowlist:
+        # Would be odd to be here, but might as well be nice to the users
+        logger.warning("Please remove whitelist from your config. This will stop working in the next minor release")
+    if blacklist and not blocklist:
+        logger.warning("Please rename blacklist to blocklist in your config. This will stop working in the next minor release")
+        blocklist = blacklist
+    if whitelist and not allowlist:
+        logger.warning("Please rename whitelist to allowlist in your config. This will stop working in the next minor release")
+        blocklist = blacklist
+
+    del blacklist
+    del whitelist
 
     for required in ('target_directory', 'platform', 'upstream_channel'):
         if (not getattr(args, required)):
@@ -801,7 +818,7 @@ def main(upstream_channel, target_directory, temp_directory, platform,
         allowlist_packages.keys())
     summary['blocklisted'].update(true_blocklist)
 
-    logger.info("BLACKLISTED PACKAGES")
+    logger.info("BLOCKLISTED PACKAGES")
     logger.info(pformat(true_blocklist))
 
     # Get a list of all packages in the local mirror
