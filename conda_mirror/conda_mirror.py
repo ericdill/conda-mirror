@@ -300,7 +300,24 @@ def _parse_and_format_args():
                 setattr(args, a.dest, config_dict.get(a.dest))
 
     blacklist = config_dict.get('blacklist')
+    denylist = config_dict.get('denylist')
     whitelist = config_dict.get('whitelist')
+    allowlist = config_dict.get('allowlist')
+    if blacklist and denylist:
+        # Would be odd to be here, but might as well be nice to the users
+        logger.warning("Please remove blacklist from your config. This will stop working in the next minor release")
+    if whitelist and allowlist:
+        # Would be odd to be here, but might as well be nice to the users
+        logger.warning("Please remove whitelist from your config. This will stop working in the next minor release")
+    if blacklist and not denylist:
+        logger.warning("Please rename blacklist to denylist in your config. This will stop working in the next minor release")
+        denylist = blacklist
+    if whitelist and not allowlist:
+        logger.warning("Please rename whitelist to allowlist in your config. This will stop working in the next minor release")
+        allowlist = whitelist
+
+    del blacklist
+    del whitelist
 
     for required in ('target_directory', 'platform', 'upstream_channel'):
         if (not getattr(args, required)):
@@ -333,8 +350,8 @@ def _parse_and_format_args():
         'temp_directory': args.temp_directory,
         'platform': args.platform,
         'num_threads': args.num_threads,
-        'blacklist': blacklist,
-        'whitelist': whitelist,
+        'denylist': denylist,
+        'allowlist': allowlist,
         'dry_run': args.dry_run,
         'no_validate_target': args.no_validate_target,
         'minimum_free_space': args.minimum_free_space,
@@ -656,7 +673,7 @@ def _validate_or_remove_package(args):
 
 
 def main(upstream_channel, target_directory, temp_directory, platform,
-         blacklist=None, whitelist=None, num_threads=1, dry_run=False,
+         denylist=None, allowlist=None, num_threads=1, dry_run=False,
          no_validate_target=False, minimum_free_space=0, proxies=None,
          ssl_verify=None, max_retries=100):
     """
@@ -679,12 +696,12 @@ def main(upstream_channel, target_directory, temp_directory, platform,
         The platform that you wish to mirror for. Common options are
         'linux-64', 'osx-64', 'win-64' and 'win-32'. Any platform is valid as
         long as the url resolves.
-    blacklist : iterable of tuples, optional
-        The values of blacklist should be (key, glob) where key is one of the
+    denylist : iterable of tuples, optional
+        The values of denylist should be (key, glob) where key is one of the
         keys in the repodata['packages'] dicts and glob is a thing to match
         on.  Note that all comparisons will be laundered through lowercasing.
-    whitelist : iterable of tuples, optional
-        The values of blacklist should be (key, glob) where key is one of the
+    allowlist : iterable of tuples, optional
+        The values of denylist should be (key, glob) where key is one of the
         keys in the repodata['packages'] dicts and glob is a thing to match
         on.  Note that all comparisons will be laundered through lowercasing.
     num_threads : int, optional
@@ -747,9 +764,9 @@ def main(upstream_channel, target_directory, temp_directory, platform,
      'version': '8.5.18'}
     """
     # Steps:
-    # 1. figure out blacklisted packages
-    # 2. un-blacklist packages that are actually whitelisted
-    # 3. remove blacklisted packages
+    # 1. figure out denylisted packages
+    # 2. un-denylist packages that are actually allowlisted
+    # 3. remove denylisted packages
     # 4. figure out final list of packages to mirror
     # 5. mirror new packages to temp dir
     # 6. validate new packages
@@ -760,7 +777,7 @@ def main(upstream_channel, target_directory, temp_directory, platform,
         'validating-existing': set(),
         'validating-new': set(),
         'downloaded': set(),
-        'blacklisted': set(),
+        'denylisted': set(),
         'to-mirror': set()
     }
     # Implementation:
@@ -777,43 +794,43 @@ def main(upstream_channel, target_directory, temp_directory, platform,
     #                    package_directory=local_directory,
     #                    num_threads=num_threads)
 
-    # 2. figure out blacklisted packages
-    blacklist_packages = {}
-    whitelist_packages = {}
-    # match blacklist conditions
-    if blacklist:
-        blacklist_packages = {}
-        for blist in blacklist:
-            logger.debug('blacklist item: %s', blist)
+    # 2. figure out denylisted packages
+    denylist_packages = {}
+    allowlist_packages = {}
+    # match denylist conditions
+    if denylist:
+        denylist_packages = {}
+        for blist in denylist:
+            logger.debug('denylist item: %s', blist)
             matched_packages = _match(packages, blist)
             logger.debug(pformat(list(matched_packages.keys())))
-            blacklist_packages.update(matched_packages)
+            denylist_packages.update(matched_packages)
 
-    # 3. un-blacklist packages that are actually whitelisted
-    # match whitelist on blacklist
-    if whitelist:
-        whitelist_packages = {}
-        for wlist in whitelist:
+    # 3. un-denylist packages that are actually allowlisted
+    # match allowlist on denylist
+    if allowlist:
+        allowlist_packages = {}
+        for wlist in allowlist:
             matched_packages = _match(packages, wlist)
-            whitelist_packages.update(matched_packages)
-    # make final mirror list of not-blacklist + whitelist
-    true_blacklist = set(blacklist_packages.keys()) - set(
-        whitelist_packages.keys())
-    summary['blacklisted'].update(true_blacklist)
+            allowlist_packages.update(matched_packages)
+    # make final mirror list of not-denylist + allowlist
+    true_denylist = set(denylist_packages.keys()) - set(
+        allowlist_packages.keys())
+    summary['denylisted'].update(true_denylist)
 
-    logger.info("BLACKLISTED PACKAGES")
-    logger.info(pformat(true_blacklist))
+    logger.info("DENIED PACKAGES")
+    logger.info(pformat(true_denylist))
 
     # Get a list of all packages in the local mirror
     if dry_run:
         local_packages = _list_conda_packages(local_directory)
         packages_slated_for_removal = [
-            pkg_name for pkg_name in local_packages if pkg_name in summary['blacklisted']
+            pkg_name for pkg_name in local_packages if pkg_name in summary['denylisted']
         ]
         logger.info("PACKAGES TO BE REMOVED")
         logger.info(pformat(packages_slated_for_removal))
 
-    possible_packages_to_mirror = set(packages.keys()) - true_blacklist
+    possible_packages_to_mirror = set(packages.keys()) - true_denylist
 
     # 4. Validate all local packages
     # construct the desired package repodata

@@ -60,9 +60,9 @@ def test_cli(tmpdir, channel, platform, repodata, num_threads):
     f1 = tmpdir.mkdir('conf').join('conf.yaml')
 
     f1.write('''
-blacklist:
+denylist:
     - name: "*"
-whitelist:
+allowlist:
     - name: {}
       version: {}'''.format(packages[smallest_package]['name'],
                             packages[smallest_package]['version']))
@@ -138,8 +138,8 @@ def test_main(tmpdir, repodata):
         target_directory=target_directory.strpath,
         temp_directory=temp_directory.strpath,
         platform=platform,
-        blacklist=[{'name': '*'}],
-        whitelist=[{'name': packages[smallest_package]['name'],
+        denylist=[{'name': '*'}],
+        allowlist=[{'name': packages[smallest_package]['name'],
                     'version': packages[smallest_package]['version']}])
 
     assert len(ret['validating-existing']) == 0, "There should be no already-downloaded packages"
@@ -152,8 +152,8 @@ def test_main(tmpdir, repodata):
         target_directory=target_directory.strpath,
         temp_directory=temp_directory.strpath,
         platform=platform,
-        blacklist=[{'name': '*'}],
-        whitelist=[{'name': packages[next_smallest_package]['name'],
+        denylist=[{'name': '*'}],
+        allowlist=[{'name': packages[next_smallest_package]['name'],
                     'version': packages[next_smallest_package]['version']}])
 
     msg = "We should have %s packages downloaded now" % previously_downloaded_packages
