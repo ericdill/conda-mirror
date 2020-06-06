@@ -1,7 +1,7 @@
-blacklist:
+blocklist:
     - license: "*agpl*"
     - license: None
     - license: ""
     - name: "*"
-whitelist:
+allowlist:
     - name: system

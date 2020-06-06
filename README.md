@@ -89,27 +89,27 @@ WARNING: Invoking this command will pull ~10GB and take at least an hour
 
 ## More Details
 
-### blacklist/whitelist configuration
+### blocklist/allowlist configuration
 
 example-conf.yaml:
 
 ```yaml
-blacklist:
+blocklist:
     - license: "*agpl*"
     - license: None
     - license: ""
 
-whitelist:
+allowlist:
     - name: system
 ```
 
-`blacklist` removes package(s) that match the condition(s) listed from the
+`blocklist` removes package(s) that match the condition(s) listed from the
 upstream repodata.
 
-`whitelist` re-includes any package(s) from blacklist that match the
-whitelist conditions.
+`allowlist` re-includes any package(s) from blocklist that match the
+allowlist conditions.
 
-blacklist and whitelist both take lists of dictionaries. The keys in the
+blocklist and allowlist both take lists of dictionaries. The keys in the
 dictionary need to be values in the `repodata.json` metadata. The values are
 (unix) globs to match on. Go here for the full repodata of the upstream
 "defaults" channel:
@@ -144,28 +144,28 @@ information.
 #### Common usage patterns
 ##### Mirror **only** one specific package
 If you wanted to match exactly the botocore package listed above with your
-config, then you could use the following configuration to first blacklist
+config, then you could use the following configuration to first blocklist
 **all** packages and then include just the botocore packages:
 
 ```yaml
-blacklist:
+blocklist:
     - name: "*"
-whitelist:
+allowlist:
     - name: botocore
       version: 1.4.10
       build: py34_0
 ```
 ##### Mirror everything but agpl licenses
 ```yaml
-blacklist:
+blocklist:
     - license: "*agpl*"
 ```
 
 ##### Mirror only python 3 packages
 ```yaml
-blacklist:
+blocklist:
     - name: "*"
-whitelist:
+allowlist:
     - build: "*py3*"
 ```
 

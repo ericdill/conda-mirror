@@ -299,8 +299,8 @@ def _parse_and_format_args():
                 logger.info("Using %s value from config file", a.dest)
                 setattr(args, a.dest, config_dict.get(a.dest))
 
-    blacklist = config_dict.get('blacklist')
-    whitelist = config_dict.get('whitelist')
+    blocklist = config_dict.get('blocklist')
+    allowlist = config_dict.get('allowlist')
 
     for required in ('target_directory', 'platform', 'upstream_channel'):
         if (not getattr(args, required)):
@@ -333,8 +333,8 @@ def _parse_and_format_args():
         'temp_directory': args.temp_directory,
         'platform': args.platform,
         'num_threads': args.num_threads,
-        'blacklist': blacklist,
-        'whitelist': whitelist,
+        'blocklist': blocklist,
+        'allowlist': allowlist,
         'dry_run': args.dry_run,
         'no_validate_target': args.no_validate_target,
         'minimum_free_space': args.minimum_free_space,
@@ -656,7 +656,7 @@ def _validate_or_remove_package(args):
 
 
 def main(upstream_channel, target_directory, temp_directory, platform,
-         blacklist=None, whitelist=None, num_threads=1, dry_run=False,
+         blocklist=None, allowlist=None, num_threads=1, dry_run=False,
          no_validate_target=False, minimum_free_space=0, proxies=None,
          ssl_verify=None, max_retries=100):
     """
@@ -679,12 +679,12 @@ def main(upstream_channel, target_directory, temp_directory, platform,
         The platform that you wish to mirror for. Common options are
         'linux-64', 'osx-64', 'win-64' and 'win-32'. Any platform is valid as
         long as the url resolves.
-    blacklist : iterable of tuples, optional
-        The values of blacklist should be (key, glob) where key is one of the
+    blocklist : iterable of tuples, optional
+        The values of blocklist should be (key, glob) where key is one of the
         keys in the repodata['packages'] dicts and glob is a thing to match
         on.  Note that all comparisons will be laundered through lowercasing.
-    whitelist : iterable of tuples, optional
-        The values of blacklist should be (key, glob) where key is one of the
+    allowlist : iterable of tuples, optional
+        The values of blocklist should be (key, glob) where key is one of the
         keys in the repodata['packages'] dicts and glob is a thing to match
         on.  Note that all comparisons will be laundered through lowercasing.
     num_threads : int, optional
@@ -747,9 +747,9 @@ def main(upstream_channel, target_directory, temp_directory, platform,
      'version': '8.5.18'}
     """
     # Steps:
-    # 1. figure out blacklisted packages
-    # 2. un-blacklist packages that are actually whitelisted
-    # 3. remove blacklisted packages
+    # 1. figure out blocklisted packages
+    # 2. un-blocklist packages that are actually allowlisted
+    # 3. remove blocklisted packages
     # 4. figure out final list of packages to mirror
     # 5. mirror new packages to temp dir
     # 6. validate new packages
@@ -760,7 +760,7 @@ def main(upstream_channel, target_directory, temp_directory, platform,
         'validating-existing': set(),
         'validating-new': set(),
         'downloaded': set(),
-        'blacklisted': set(),
+        'blocklisted': set(),
         'to-mirror': set()
     }
     # Implementation:
@@ -777,43 +777,43 @@ def main(upstream_channel, target_directory, temp_directory, platform,
     #                    package_directory=local_directory,
     #                    num_threads=num_threads)
 
-    # 2. figure out blacklisted packages
-    blacklist_packages = {}
-    whitelist_packages = {}
-    # match blacklist conditions
-    if blacklist:
-        blacklist_packages = {}
-        for blist in blacklist:
-            logger.debug('blacklist item: %s', blist)
+    # 2. figure out blocklisted packages
+    blocklist_packages = {}
+    allowlist_packages = {}
+    # match blocklist conditions
+    if blocklist:
+        blocklist_packages = {}
+        for blist in blocklist:
+            logger.debug('blocklist item: %s', blist)
             matched_packages = _match(packages, blist)
             logger.debug(pformat(list(matched_packages.keys())))
-            blacklist_packages.update(matched_packages)
+            blocklist_packages.update(matched_packages)
 
-    # 3. un-blacklist packages that are actually whitelisted
-    # match whitelist on blacklist
-    if whitelist:
-        whitelist_packages = {}
-        for wlist in whitelist:
+    # 3. un-blocklist packages that are actually allowlisted
+    # match allowlist on blocklist
+    if allowlist:
+        allowlist_packages = {}
+        for wlist in allowlist:
             matched_packages = _match(packages, wlist)
-            whitelist_packages.update(matched_packages)
-    # make final mirror list of not-blacklist + whitelist
-    true_blacklist = set(blacklist_packages.keys()) - set(
-        whitelist_packages.keys())
-    summary['blacklisted'].update(true_blacklist)
+            allowlist_packages.update(matched_packages)
+    # make final mirror list of not-blocklist + allowlist
+    true_blocklist = set(blocklist_packages.keys()) - set(
+        allowlist_packages.keys())
+    summary['blocklisted'].update(true_blocklist)
 
     logger.info("BLACKLISTED PACKAGES")
-    logger.info(pformat(true_blacklist))
+    logger.info(pformat(true_blocklist))
 
     # Get a list of all packages in the local mirror
     if dry_run:
         local_packages = _list_conda_packages(local_directory)
         packages_slated_for_removal = [
-            pkg_name for pkg_name in local_packages if pkg_name in summary['blacklisted']
+            pkg_name for pkg_name in local_packages if pkg_name in summary['blocklisted']
         ]
         logger.info("PACKAGES TO BE REMOVED")
         logger.info(pformat(packages_slated_for_removal))
 
-    possible_packages_to_mirror = set(packages.keys()) - true_blacklist
+    possible_packages_to_mirror = set(packages.keys()) - true_blocklist
 
     # 4. Validate all local packages
     # construct the desired package repodata
