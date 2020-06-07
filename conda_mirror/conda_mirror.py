@@ -305,15 +305,23 @@ def _parse_and_format_args():
     allowlist = config_dict.get('allowlist')
     if blacklist and denylist:
         # Would be odd to be here, but might as well be nice to the users
-        logger.warning("Please remove blacklist from your config. This will stop working in the next minor release")
+        logger.warning(
+            "Please remove blacklist from your config. "
+            "This will stop working in the next minor release")
     if whitelist and allowlist:
         # Would be odd to be here, but might as well be nice to the users
-        logger.warning("Please remove whitelist from your config. This will stop working in the next minor release")
+        logger.warning(
+            "Please remove whitelist from your config. "
+            "This will stop working in the next minor release")
     if blacklist and not denylist:
-        logger.warning("Please rename blacklist to denylist in your config. This will stop working in the next minor release")
+        logger.warning(
+            "Please rename blacklist to denylist in your config. "
+            "This will stop working in the next minor release")
         denylist = blacklist
     if whitelist and not allowlist:
-        logger.warning("Please rename whitelist to allowlist in your config. This will stop working in the next minor release")
+        logger.warning(
+            "Please rename whitelist to allowlist in your config. "
+            "This will stop working in the next minor release")
         allowlist = whitelist
 
     del blacklist
