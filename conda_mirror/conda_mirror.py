@@ -7,12 +7,13 @@ import logging
 import multiprocessing
 import os
 import pdb
+import random
 import shutil
 import sys
 import tarfile
 import tempfile
+import textwrap
 import time
-import random
 from pprint import pformat
 
 import requests
@@ -50,7 +51,7 @@ def _maybe_split_channel(channel):
     channel : str
         The name-only channel. If the channel input param is something like
         "conda-forge", then "conda-forge" will be returned. If the channel
-        input param is something like "https://repo.continuum.io/pkgs/free/"
+        input param is something like "https://repo.anaconda.com/pkgs/free/"
 
     """
     # strip trailing slashes
@@ -74,9 +75,17 @@ def _maybe_split_channel(channel):
 def _match(all_packages, key_glob_dict):
     """
 
-    Parameters
-    ----------
-    all_packages : iterable
+    platform = 'linux-64'
+    channel = 'conda-forge'
+    target_directory = tmpdir.mkdir(platform)
+    temp_directory = tmpdir.mkdir(join(platform, 'temp'))
+    ret = conda_mirror.main(
+        upstream_channel=channel,
+        platform=platform,
+        target_directory=target_directory.strpath,
+        temp_directory=temp_directory.strpath,
+        dry_run=True
+    )
         Iterable of package metadata dicts from repodata.json
     key_glob_dict : iterable of kv pairs
         Iterable of (key, glob_value) dicts
@@ -133,7 +142,7 @@ def _make_arg_parser():
         '--upstream-channel',
         help=('The target channel to mirror. Can be a channel on anaconda.org '
               'like "conda-forge" or a full qualified channel like '
-              '"https://repo.continuum.io/pkgs/free/"'),
+              '"https://repo.anaconda.com/pkgs/free/"'),
     )
     ap.add_argument(
         '--target-directory',
@@ -233,6 +242,20 @@ def _make_arg_parser():
         default=100,
         dest="max_retries",
     )
+    ap.add_argument(
+        '--Anaconda-business-customer',
+        help=("Use this flag if you have an existing commercial relationship with Anaconda"),
+        action="store_true",
+        default=False,
+        dest='Anaconda_business_customer'
+    )
+    ap.add_argument(
+        '--not-a-commercial-entity',
+        help=("Use this flag if you have are a nonprofit or otherwise not a commercial entity"),
+        action="store_true",
+        default=False,
+        dest='not_a_commercial_entity'
+    )
     return ap
 
 
@@ -327,6 +350,35 @@ def _parse_and_format_args():
         else:
             url = '{}:{}'.format(scheme, url[0])
         proxies = {scheme: url}
+
+    Anaconda_business_customer = args.Anaconda_business_customer
+    not_a_commercial_entity = args.not_a_commercial_entity
+    # if you are trying to mirror repo.anaconda.com and you are a commercial entity or
+    # you do not have a commercial relationship with anaconda, then:
+    anaconda_channel = ('anaconda.com' in args.upstream_channel or
+                        'continuum.io' in args.upstream_channel)
+    if anaconda_channel and not (not_a_commercial_entity or Anaconda_business_customer):
+        message = textwrap.dedent("""
+        Will not mirror repo.anaconda.com until you acknowledge that
+        (a) you are not a commercial entity
+            (add `not_a_commercial_entity: True` to your mirror config or
+             pass --not-a-commercial-entity on the CLI)
+        (b) you have a commercial relationship with anaconda
+            (add `Anaconda_business_customer: True` to your mirror config or
+             pass --Anaconda-business-customer on the CLI).
+        Please see the Anaconda Terms of Service at https://know.anaconda.com/TOS.html
+        for more information. Or reach out to sales@anaconda.com for commercial interest.
+        We, as the conda-mirror maintainers, encourage you to financially support Anaconda
+        if you find value from the packages they provide at repo.anaconda.com. We do not support
+        knowingly breaking their terms of service. We cannot prevent you from breaking their
+        terms of service, but we can at least force you to acknowledge that you are breaking
+        their terms of service if you are a commercial entity and you do not have a business
+        relationship with them. If you are a non-profit, scientific / research lab then you may
+        disregard this message as we are confident that Anaconda wants you to continue doing
+        the work you're doing.""")
+        logger.error(message)
+        raise RuntimeError(message)
+
     return {
         'upstream_channel': args.upstream_channel,
         'target_directory': args.target_directory,
@@ -666,7 +718,7 @@ def main(upstream_channel, target_directory, temp_directory, platform,
     upstream_channel : str
         The anaconda.org channel that you want to mirror locally
         e.g., "conda-forge" or
-        the defaults channel at "https://repo.continuum.io/pkgs/free"
+        the defaults channel at "https://repo.anaconda.com/pkgs/free"
     target_directory : str
         The path on disk to produce a local mirror of the upstream channel.
         Note that this is the directory that contains the platform

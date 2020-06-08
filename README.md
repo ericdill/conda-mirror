@@ -26,7 +26,7 @@ or:
 
 CLI interface for `conda-mirror.py`
 
-```
+```shell
 usage: conda-mirror [-h] [--upstream-channel UPSTREAM_CHANNEL]
                     [--target-directory TARGET_DIRECTORY]
                     [--temp-directory TEMP_DIRECTORY] [--platform PLATFORM]
@@ -42,7 +42,7 @@ optional arguments:
   --upstream-channel UPSTREAM_CHANNEL
                         The target channel to mirror. Can be a channel on
                         anaconda.org like "conda-forge" or a full qualified
-                        channel like "https://repo.continuum.io/pkgs/free/"
+                        channel like "https://repo.anaconda.com/pkgs/free/"
   --target-directory TARGET_DIRECTORY
                         The place where packages should be mirrored to
   --temp-directory TEMP_DIRECTORY
@@ -196,7 +196,7 @@ plugins: xonsh-0.5.2, ordering-0.4
 collected 4 items
 
 test/test_conda_mirror.py::test_match PASSED
-test/test_conda_mirror.py::test_cli[https://repo.continuum.io/pkgs/free-linux-64] PASSED
+test/test_conda_mirror.py::test_cli[https://repo.anaconda.com/pkgs/free-linux-64] PASSED
 test/test_conda_mirror.py::test_cli[conda-forge-linux-64] PASSED
 test/test_conda_mirror.py::test_handling_bad_package PASSED
 

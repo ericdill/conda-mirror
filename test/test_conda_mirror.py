@@ -1,6 +1,5 @@
 import bz2
 import copy
-import itertools
 import json
 import os
 import sys
@@ -47,14 +46,14 @@ def _get_smallest_packages(packages, num=1):
 
 
 @pytest.mark.parametrize(
-    'channel,platform',
-    itertools.product([anaconda_channel, 'conda-forge'], ['linux-64']))
-@pytest.mark.parametrize('num_threads', [0, 1, 4])
+    'channel,platform,num_threads',
+    ((anaconda_channel, 'linux-64', 0),
+     ('conda-forge',    'linux-64', 1)))
 def test_cli(tmpdir, channel, platform, repodata, num_threads):
     info, packages = repodata[channel]
     smallest_package, = _get_smallest_packages(packages)
-    # drop the html stuff. get just the channel
 
+    # drop the html stuff. get just the channel
     f2 = tmpdir.mkdir(channel.rsplit('/', 1)[-1])
     f2.mkdir(platform)
     f1 = tmpdir.mkdir('conf').join('conf.yaml')
@@ -79,6 +78,8 @@ whitelist:
                          target_directory=f2.strpath,
                          platform=platform,
                          num_threads=num_threads)
+    if 'anaconda.com' in channel or 'continuum.io' in channel:
+        cli_args += " --not-a-commercial-entity"
     old_argv = copy.deepcopy(sys.argv)
     sys.argv = cli_args.split(' ')
     # Write a package that does not exist in the upstream repodata into the
@@ -175,3 +176,34 @@ def test_dry_run_dumb(tmpdir):
         dry_run=True
     )
     assert len(ret['to-mirror']) > 1, "We should have a great deal of packages slated to download"
+
+
+@pytest.mark.parametrize(
+    'channel', ('https://repo.anaconda.com/pkgs/main',
+                'https://repo.continuum.io/pkgs./main',
+                'conda-forge',
+                'bioconda'))
+def test_TOS(tmpdir, channel):
+    platform = 'linux-64'
+    # drop the html stuff. get just the channel
+    f2 = tmpdir.mkdir(channel.rsplit('/', 1)[-1])
+    f2.mkdir(platform)
+
+    cli_args = ("conda-mirror"
+                " --config example-conf.yaml"
+                " --upstream-channel {channel}"
+                " --target-directory {target_directory}"
+                " --platform {platform}"
+                " -vvv"
+                ).format(channel=channel,
+                         target_directory=f2.strpath,
+                         platform=platform)
+    old_argv = copy.deepcopy(sys.argv)
+    sys.argv = cli_args.split(' ')
+    should_raise = 'anaconda.com' in channel or 'continuum.io' in channel
+    if should_raise:
+        with pytest.raises(RuntimeError):
+            conda_mirror._parse_and_format_args()
+    else:
+        conda_mirror._parse_and_format_args()
+    sys.argv = old_argv
